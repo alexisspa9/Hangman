@@ -63,7 +63,6 @@ class Gameplay
 
 	def start_game_loop
 		while @guesses > 0
-			puts @secret
 			display_game(@guesses, @secret, @guessed_letters, @wrong_letters, @games_won)
 			choice = gets.chomp.downcase
 			if letter?(choice) && choice.length < 2
