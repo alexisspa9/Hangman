@@ -1,6 +1,8 @@
 class Gameplay
 	require "./secret_word.rb"
 	require 'json'
+	require './moduleDisplay.rb'
+	include Display
 
 	def initialize()
 		@secret = nil
@@ -12,14 +14,14 @@ class Gameplay
 	end
 
 	def new_game()
-		puts "What is your name?"
+		display_ask_name
 		@name = gets.chomp
 		start_game
 	end
 
 
 	def start_game()
-		@secret = SecretWord.new.line_chosen.chomp.downcase
+		@secret = SecretWord.new.line_chosen
 		play	
 	end
 
@@ -41,10 +43,28 @@ class Gameplay
 
 	end
 
+	private
+
 	def play
+		start_game_loop
+		if game_is_won?(@secret, @guessed_letters)
+			@games_won += 1
+			display_you_won
+			choice = gets.chomp.downcase
+			check_play_again(choice)
+			exit
+		else
+			display_you_lose(@choices)
+			choice = gets.chomp.downcase
+			check_play_again(choice)
+			exit
+		end
+	end
+
+	def start_game_loop
 		while @guesses > 0
 			puts @secret
-			print_game(@guesses, @secret, @guessed_letters, @wrong_letters, @games_won)
+			display_game(@guesses, @secret, @guessed_letters, @wrong_letters, @games_won)
 			choice = gets.chomp.downcase
 			if letter?(choice) && choice.length < 2
 				puts already_guessed(choice) ? "\e[32mYou already guessed that\e[0m\n" : check_letter(choice)
@@ -57,31 +77,16 @@ class Gameplay
 				play
 			end
 		end
-		if game_is_won?(@secret, @guessed_letters)
-			@games_won += 1
-			puts "\n\e[32mCongratulations you won!!\e[0m\nDo you want to play again? Y/N"
-			play_again = gets.chomp.downcase
-			if play_again == "y" || play_again == "yes"
-				@guesses = 7
-				@guessed_letters = []
-				@wrong_letters = []
-
-				start_game
-			end
-		else
-			puts "#{print_hangman(@guesses)}\n\e[31mYou are hanged!\e[0m\nDo you want to play again? Y/N"
-			play_again = gets.chomp.downcase
-			if play_again == "y" || play_again == "yes"
-				@guesses = 7
-				@guessed_letters = []
-				@wrong_letters = []
-				@games_won = 0
-				start_game
-			end
-		end
 	end
 
-	private
+	def check_play_again(choice)
+		if choice == "y" || choice == "yes"
+			@guesses = 7
+			@guessed_letters = []
+			@wrong_letters = []
+			start_game
+		end	
+	end
 
 	def check_letter(choice)
 		if @secret.include? choice
@@ -101,74 +106,26 @@ class Gameplay
 		secret.split("").all? {|c| guessed_letters.include? c}		
 	end
 
-	def display_word(secret, guessed_letters)
-		displayed = []
-		secret.split("").each do |c|
-			if guessed_letters.include? c
-				displayed << c
-			else
-				displayed << "_ "
-			end
-		end	
-		displayed.join()
+	def save_game
+	  	gameFile = {
+		  	:player_name => @name,
+		  	:hidden_word => @secret,
+		    :guesses => @guesses,
+		    :guessed_letters => @guessed_letters,
+		  	:wrong_letters => @wrong_letters,
+		  	:games_won => @games_won
+	    }
+	  	Dir.mkdir('saved_games') unless Dir.exist?('saved_games')
+	  	filename = "saved_games/#{@name}.rb"
+	  	File.open(filename, 'w') do |file|
+	  	  file.write(gameFile.to_json)
+  		end
+  		display_saved(@name)
+	  	exit
 	end
 
 	def letter?(choice)
 	  choice =~ /[[:alpha:]]/
 	end
-
-	def print_game(guesses, secret, guessed_letters, wrong_letters, games_won)
-		puts print_hangman(guesses)
-		puts "\t\e[36mHidden word: \e[0m#{display_word(secret, guessed_letters)}\n\n"
-		puts "Games won: #{games_won}\n"
-		puts "You have #{guesses} guesses left\n"
-		puts @wrong_letters.length > 0 ? "\e[31mYou tried: #{wrong_letters.join(',')}\e[0m\n" : nil
-		puts "Make your guess or type 1 to save your progress:\n"
-	end
-
-	def print_hangman(guesses)
-		case guesses
-		when 7
-		  puts "\t    +---+\n\t\t|\n\t\t|\n\t\t|\n\t\t|\n\t\t|\n\t============"
-		when 6
-		  puts "\t    +---+\n\t    |\t|\n\t\t|\n\t\t|\n\t\t|\n\t\t|\n\t============"
-		when 5
-		  puts "\t    +---+\n\t    |\t|\n\t    O\t|\n\t\t|\n\t\t|\n\t\t|\n\t============"
-
-		when 4
-		  puts "\t\e[33m    +---+\n\t    |\t|\n\t    O\t|\n\t    |\t|\n\t\t|\n\t\t|\n\t============\e[0m"
-		when 3
-		  puts "\t\e[33m    +---+\n\t    |\t|\n\t    O\t|\n\t   /|\t|\n\t\t|\n\t\t|\n\t============\e[0m"
-		when 2
-		  puts "\t\e[33m    +---+\n\t    |\t|\n\t    O\t|\n\t   /|\\\t|\n\t\t|\n\t\t|\n\t============\e[0m"
-		when 1
-		  puts "\t\e[33m    +---+\n\t    |\t|\n\t    O\t|\n\t   /|\\\t|\n\t   /\t|\n\t\t|\n\t============\e[0m"
-		else
-		  puts "\t\e[31m    +---+\n\t    |\t|\n\t    O\t|\n\t   /|\\\t|\n\t   / \\\t|\n\t\t|\n\t============\e[0m"
-		end
-		
-	end
-
-	def save_game
-  	gameFile = {
-	  	:player_name => @name,
-	  	:hidden_word => @secret,
-	    :guesses => @guesses,
-	    :guessed_letters => @guessed_letters,
-	  	:wrong_letters => @wrong_letters,
-	  	:games_won => @games_won
-    }
-
-  	Dir.mkdir('saved_games') unless Dir.exist?('saved_games')
-  	filename = "saved_games/#{@name}.rb"
-  	File.open(filename, 'w') do |file|
-  	  file.write(gameFile.to_json)
-  	end
-  	puts 'Your game is saved. Use your name to access it when you return.'
-  	exit
-
-	end
-
-
 
 end
