@@ -1,0 +1,1 @@
+{"player_name":"Alexander","hidden_word":"stock","guesses":7,"guessed_letters":["s","o"],"wrong_letters":[],"games_won":1}
