@@ -5,3 +5,4 @@ A ruby cli version of the game Hangman. You can play live at [Repl.it](https://r
 ## What I Learned
 
  - Working with File I/O and Serialization
+ - Use JSON to save and load the game
